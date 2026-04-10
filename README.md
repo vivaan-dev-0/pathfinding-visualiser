@@ -1,8 +1,8 @@
-# Pathfinding Lab 🧭
+# Pathfinding Lab 
 
 An interactive, browser-based pathfinding algorithm visualiser built from scratch with vanilla HTML, CSS and JavaScript. Designed to demonstrate how classic graph search algorithms explore a grid and find the shortest path between two points.
 
-> 🔗 **[Live Demo](https://YOURUSERNAME.github.io/pathfinding-lab)** — replace with your actual GitHub Pages link
+>  [Live Demo](https://vivaan-dev-0.github.io/pathfinding-visualiser)
 
 ---
 
@@ -35,12 +35,12 @@ An interactive, browser-based pathfinding algorithm visualiser built from scratc
 
 ## How to Use
 
-### Option A — Run locally
+###Run locally
 1. Download `pathfinding_visualiser.html`
 2. Open it in any modern browser (Chrome, Firefox, Edge)
 3. No installation required
 
-### Option B — Run in Google Colab
+### Run in Google Colab
 1. Upload `Pathfinding_Lab.ipynb` to [Google Colab](https://colab.research.google.com)
 2. Upload `pathfinding_visualiser.html` using the Files panel (folder icon, left sidebar)
 3. Run the first cell — the visualiser loads inline in the notebook
@@ -87,4 +87,4 @@ An interactive, browser-based pathfinding algorithm visualiser built from scratc
 ## Author
 
 **vivaananand** — Computer Science student  
-[GitHub](https://github.com/YOURUSERNAME) · [Live Demo](https://YOURUSERNAME.github.io/pathfinding-lab)
+[GitHub](https://github.com/vivaan-dev-0) · [Live Demo](https://vivaan-dev-0.github.io/pathfinding-visualiser)
