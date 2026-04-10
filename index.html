@@ -1005,8 +1005,9 @@ function randomMaze() {
 
   // Place start and end at opposite corners (guaranteed open by carve)
   grid[1][1] = CELL.START; startCell = { r: 1, c: 1 };
-  const er = ROWS % 2 === 0 ? ROWS - 2 : ROWS - 2;
-  const ec = COLS % 2 === 0 ? COLS - 2 : COLS - 2;
+
+  const er = ROWS % 2 === 0 ? ROWS - 3 : ROWS - 2;
+const ec = COLS % 2 === 0 ? COLS - 3 : COLS - 2;
   grid[er][ec] = CELL.END; endCell = { r: er, c: ec };
 
   updateWallStat();
