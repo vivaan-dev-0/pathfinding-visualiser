@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pathfinding Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #f5f4f0;
+    --surface:   #ffffff;
+    --border:    #d8d5ce;
+    --text:      #1a1916;
+    --muted:     #7a776e;
+    --accent:    #2563eb;
+    --accent-lt: #dbeafe;
+
+    --cell-empty:   #f5f4f0;
+    --cell-wall:    #1a1916;
+    --cell-start:   #16a34a;
+    --cell-end:     #dc2626;
+    --cell-visited: #bfdbfe;
+    --cell-path:    #2563eb;
+    --cell-moving:  #f59e0b;
+    --cell-frontier:#93c5fd;
+
+    --grid-line: #e2dfd8;
+    --radius: 4px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  }
+
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 18px 28px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+  header h1 em { font-style: italic; color: var(--accent); }
+  header span {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── Layout ── */
+  .workspace {
+    display: flex;
+    flex: 1;
+    gap: 0;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    overflow-y: auto;
+  }
+  .section-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .algo-list { display: flex; flex-direction: column; gap: 4px; }
+  .algo-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 7px 11px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .algo-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .algo-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .algo-tag {
+    font-size: 0.6rem;
+    opacity: 0.7;
+    margin-left: auto;
+    letter-spacing: 0.05em;
+  }
+
+  .tool-list { display: flex; flex-direction: column; gap: 4px; }
+  .tool-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 7px 11px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tool-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tool-btn.active {
+    background: var(--accent-lt);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .tool-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .speed-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .speed-row { display: flex; justify-content: space-between; align-items: center; }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  .action-stack { display: flex; flex-direction: column; gap: 6px; }
+  .btn {
+    border: none;
+    border-radius: var(--radius);
+    padding: 9px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .btn-secondary { background: var(--bg); border: 1px solid var(--border); color: var(--text); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626; }
+  .btn-danger:hover { background: #fee2e2; }
+
+  /* ── Stats ── */
+  .stats {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat-val { font-size: 1rem; font-weight: 600; color: var(--text); }
+  .stat-key { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ── Status bar ── */
+  .statusbar {
+    font-size: 0.68rem;
+    color: var(--muted);
+    padding: 6px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .status-dot.running { background: #16a34a; animation: pulse 1s infinite; }
+  .status-dot.done    { background: var(--accent); }
+  .status-dot.error   { background: #dc2626; }
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+  }
+
+  /* ── Grid area ── */
+  .grid-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 16px;
+  }
+  #grid-canvas {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: crosshair;
+    box-shadow: var(--shadow);
+    display: block;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── Grid size controls ── */
+  .grid-size-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+  .grid-size-row select {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 3px 6px;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  /* scrollbar */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pathfinding <em>Lab</em></h1>
+  <span>Interactive Algorithm Visualiser</span>
+</header>
+
+<div class="workspace">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <div>
+      <div class="section-label">Algorithm</div>
+      <div class="algo-list" id="algo-list">
+        <button class="algo-btn active" data-algo="astar">
+          A* Search <span class="algo-tag">optimal</span>
+        </button>
+        <button class="algo-btn" data-algo="dijkstra">
+          Dijkstra <span class="algo-tag">optimal</span>
+        </button>
+        <button class="algo-btn" data-algo="bfs">
+          BFS <span class="algo-tag">unweighted</span>
+        </button>
+        <button class="algo-btn" data-algo="greedy">
+          Greedy BFS <span class="algo-tag">heuristic</span>
+        </button>
+        <button class="algo-btn" data-algo="dfs">
+          DFS <span class="algo-tag">non-optimal</span>
+        </button>
+        <button class="algo-btn" data-algo="bidibfs">
+          Bi-dir BFS <span class="algo-tag">fast</span>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Tool</div>
+      <div class="tool-list" id="tool-list">
+        <button class="tool-btn active" data-tool="wall">
+          <span class="tool-dot" style="background:var(--cell-wall)"></span>Wall
+        </button>
+        <button class="tool-btn" data-tool="start">
+          <span class="tool-dot" style="background:var(--cell-start)"></span>Start
+        </button>
+        <button class="tool-btn" data-tool="end">
+          <span class="tool-dot" style="background:var(--cell-end)"></span>End
+        </button>
+        <button class="tool-btn" data-tool="moving">
+          <span class="tool-dot" style="background:var(--cell-moving)"></span>Moving Obstacle
+        </button>
+        <button class="tool-btn" data-tool="erase">
+          <span class="tool-dot" style="background:var(--bg);border:1px solid var(--border)"></span>Erase
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Grid Size</div>
+      <div class="grid-size-row">
+        <span>Columns × Rows</span>
+        <select id="grid-size">
+          <option value="20x15">20 × 15</option>
+          <option value="30x20" selected>30 × 20</option>
+          <option value="40x25">40 × 25</option>
+          <option value="50x30">50 × 30</option>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Speed</div>
+      <div class="speed-wrap">
+        <div class="speed-row">
+          <span style="font-size:0.65rem;color:var(--muted)">Slow</span>
+          <span style="font-size:0.65rem;color:var(--muted)" id="speed-label">50ms</span>
+          <span style="font-size:0.65rem;color:var(--muted)">Fast</span>
+        </div>
+        <input type="range" id="speed" min="5" max="200" value="50" step="5">
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Stats</div>
+      <div class="stats">
+        <div class="stat"><span class="stat-val" id="stat-visited">—</span><span class="stat-key">Visited</span></div>
+        <div class="stat"><span class="stat-val" id="stat-path">—</span><span class="stat-key">Path len</span></div>
+        <div class="stat"><span class="stat-val" id="stat-time">—</span><span class="stat-key">Time (ms)</span></div>
+        <div class="stat"><span class="stat-val" id="stat-walls">0</span><span class="stat-key">Walls</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Status</div>
+      <div class="statusbar" id="statusbar">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Place start &amp; end, then Visualise.</span>
+      </div>
+    </div>
+
+    <div class="action-stack">
+      <button class="btn btn-primary" id="btn-run">▶ Visualise</button>
+      <button class="btn btn-secondary" id="btn-step">Step →</button>
+      <button class="btn btn-secondary" id="btn-clear-path">Clear Path</button>
+      <button class="btn btn-secondary" id="btn-random-maze">Random Maze</button>
+      <button class="btn btn-danger" id="btn-clear-all">Clear All</button>
+    </div>
+
+  </aside>
+
+  <!-- Grid -->
+  <main class="grid-area">
+    <canvas id="grid-canvas"></canvas>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--cell-start)"></span>Start</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--cell-end)"></span>End</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--cell-wall)"></span>Wall</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--cell-moving)"></span>Moving obstacle</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--cell-frontier)"></span>Frontier</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--cell-visited)"></span>Visited</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--cell-path)"></span>Path</div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  CONSTANTS & STATE
+// ─────────────────────────────────────────────
+const canvas = document.getElementById('grid-canvas');
+const ctx = canvas.getContext('2d');
+
+const CELL = {
+  EMPTY: 0, WALL: 1, START: 2, END: 3,
+  VISITED: 4, PATH: 5, FRONTIER: 6, MOVING: 7
+};
+
+let COLS = 30, ROWS = 20;
+let CELL_SIZE = 24;
+let grid = [];
+let startCell = null, endCell = null;
+let movingObstacles = [];
+
+let currentTool = 'wall';
+let currentAlgo = 'astar';
+let isDrawing = false;
+let isRunning = false;
+let animationFrameId = null;
+let stepMode = false;
+let stepQueue = [];
+let stepIndex = 0;
+let algoStartTime = 0;
+
+// ─────────────────────────────────────────────
+//  GRID INIT
+// ─────────────────────────────────────────────
+function initGrid() {
+  grid = Array.from({ length: ROWS }, () => Array(COLS).fill(CELL.EMPTY));
+  startCell = null; endCell = null;
+  movingObstacles = [];
+  updateWallStat();
+}
+
+function resizeCanvas() {
+  const area = document.querySelector('.grid-area');
+  const maxW = area.clientWidth - 48;
+  const maxH = area.clientHeight - 80;
+  CELL_SIZE = Math.floor(Math.min(maxW / COLS, maxH / ROWS));
+  CELL_SIZE = Math.max(12, Math.min(CELL_SIZE, 36));
+  canvas.width  = COLS * CELL_SIZE;
+  canvas.height = ROWS * CELL_SIZE;
+  drawGrid();
+}
+
+// ─────────────────────────────────────────────
+//  DRAWING
+// ─────────────────────────────────────────────
+const COLOR = {
+  [CELL.EMPTY]:    '#f5f4f0',
+  [CELL.WALL]:     '#1a1916',
+  [CELL.START]:    '#16a34a',
+  [CELL.END]:      '#dc2626',
+  [CELL.VISITED]:  '#bfdbfe',
+  [CELL.PATH]:     '#2563eb',
+  [CELL.FRONTIER]: '#93c5fd',
+  [CELL.MOVING]:   '#f59e0b',
+};
+
+function drawGrid() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      drawCell(r, c, grid[r][c]);
+    }
+  }
+}
+
+function drawCell(r, c, type) {
+  const x = c * CELL_SIZE, y = r * CELL_SIZE;
+  const s = CELL_SIZE;
+  ctx.fillStyle = COLOR[type] || COLOR[CELL.EMPTY];
+  ctx.fillRect(x + 0.5, y + 0.5, s - 1, s - 1);
+
+  // grid lines
+  ctx.strokeStyle = '#e2dfd8';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(x + 0.5, y + 0.5, s - 1, s - 1);
+
+  // icons for start/end
+  if (type === CELL.START || type === CELL.END) {
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.max(10, s * 0.5)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(type === CELL.START ? 'S' : 'E', x + s / 2, y + s / 2);
+  }
+  if (type === CELL.MOVING) {
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.max(10, s * 0.45)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⬛', x + s / 2, y + s / 2);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  MOUSE / TOUCH INTERACTION
+// ─────────────────────────────────────────────
+function getCellFromEvent(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (e.clientX - rect.left) * scaleX;
+  const y = (e.clientY - rect.top)  * scaleY;
+  const c = Math.floor(x / CELL_SIZE);
+  const r = Math.floor(y / CELL_SIZE);
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
+  return { r, c };
+}
+
+function applyTool(pos) {
+  if (!pos) return;
+  const { r, c } = pos;
+  const current = grid[r][c];
+
+  if (currentTool === 'start') {
+    if (startCell) grid[startCell.r][startCell.c] = CELL.EMPTY;
+    startCell = { r, c };
+    grid[r][c] = CELL.START;
+  } else if (currentTool === 'end') {
+    if (endCell) grid[endCell.r][endCell.c] = CELL.EMPTY;
+    endCell = { r, c };
+    grid[r][c] = CELL.END;
+  } else if (currentTool === 'wall') {
+    if (current !== CELL.START && current !== CELL.END && current !== CELL.MOVING) {
+      grid[r][c] = CELL.WALL;
+    }
+  } else if (currentTool === 'moving') {
+    if (current !== CELL.START && current !== CELL.END) {
+      // Only add to tracker if not already a moving obstacle
+      if (current !== CELL.MOVING) movingObstacles.push({ r, c });
+      grid[r][c] = CELL.MOVING;
+    }
+  } else if (currentTool === 'erase') {
+    if (current === CELL.START) startCell = null;
+    if (current === CELL.END)   endCell   = null;
+    if (current === CELL.MOVING) {
+      movingObstacles = movingObstacles.filter(o => !(o.r===r && o.c===c));
+    }
+    grid[r][c] = CELL.EMPTY;
+  }
+  updateWallStat();
+  drawGrid();
+}
+
+canvas.addEventListener('mousedown', e => {
+  if (isRunning) return;
+  isDrawing = true;
+  applyTool(getCellFromEvent(e));
+});
+canvas.addEventListener('mousemove', e => {
+  if (!isDrawing) return;
+  applyTool(getCellFromEvent(e));
+});
+canvas.addEventListener('mouseup', () => { isDrawing = false; });
+canvas.addEventListener('mouseleave', () => { isDrawing = false; });
+
+// Touch support
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (isRunning) return;
+  isDrawing = true;
+  applyTool(getCellFromEvent(e.touches[0]));
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!isDrawing) return;
+  applyTool(getCellFromEvent(e.touches[0]));
+}, { passive: false });
+canvas.addEventListener('touchend', () => { isDrawing = false; });
+
+// ─────────────────────────────────────────────
+//  MOVING OBSTACLE DRAG
+// ─────────────────────────────────────────────
+let draggingObstacle = null;
+
+canvas.addEventListener('mousedown', e => {
+  if (currentTool !== 'moving') return;
+  const pos = getCellFromEvent(e);
+  if (!pos) return;
+  const found = movingObstacles.find(o => o.r === pos.r && o.c === pos.c);
+  if (found) draggingObstacle = found;
+});
+canvas.addEventListener('mousemove', e => {
+  if (!draggingObstacle) return;
+  const pos = getCellFromEvent(e);
+  if (!pos) return;
+  if (grid[pos.r][pos.c] === CELL.EMPTY || grid[pos.r][pos.c] === CELL.MOVING) {
+    grid[draggingObstacle.r][draggingObstacle.c] = CELL.EMPTY;
+    draggingObstacle.r = pos.r;
+    draggingObstacle.c = pos.c;
+    grid[pos.r][pos.c] = CELL.MOVING;
+    drawGrid();
+  }
+});
+canvas.addEventListener('mouseup', () => { draggingObstacle = null; });
+
+// ─────────────────────────────────────────────
+//  ALGORITHM HELPERS
+// ─────────────────────────────────────────────
+function heuristic(a, b) {
+  return Math.abs(a.r - b.r) + Math.abs(a.c - b.c); // Manhattan
+}
+
+function getNeighbors(r, c) {
+  const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+  return dirs
+    .map(([dr,dc]) => ({ r: r+dr, c: c+dc }))
+    .filter(({r,c}) => r>=0 && r<ROWS && c>=0 && c<COLS &&
+      grid[r][c] !== CELL.WALL && grid[r][c] !== CELL.MOVING);
+}
+
+function key(r, c) { return `${r},${c}`; }
+
+// ─────────────────────────────────────────────
+//  ALGORITHMS — return { visitedOrder, path }
+// ─────────────────────────────────────────────
+
+function runAstar(start, end) {
+  // f = g + h  (g = cost from start, h = Manhattan heuristic to end)
+  const open = [{ r: start.r, c: start.c, g: 0, f: heuristic(start, end) }];
+  const cameFrom = {};
+  const gScore = { [key(start.r, start.c)]: 0 };
+  const closed = new Set(); // nodes fully processed — never re-expand
+  const visited = [];
+
+  while (open.length) {
+    // Always expand the node with lowest f score
+    open.sort((a, b) => a.f - b.f);
+    const curr = open.shift();
+    const k = key(curr.r, curr.c);
+
+    // Skip if this is a stale duplicate entry in the open list
+    if (closed.has(k)) continue;
+    closed.add(k);
+
+    if (curr.r === end.r && curr.c === end.c) return { visited, path: reconstruct(cameFrom, curr) };
+    visited.push({ r: curr.r, c: curr.c });
+
+    for (const nb of getNeighbors(curr.r, curr.c)) {
+      const nbk = key(nb.r, nb.c);
+      if (closed.has(nbk)) continue; // already settled
+
+      const tentG = (gScore[k] ?? Infinity) + 1;
+      if (tentG < (gScore[nbk] ?? Infinity)) {
+        // Found a better path to nb — record it
+        gScore[nbk] = tentG;
+        cameFrom[nbk] = { r: curr.r, c: curr.c };
+        // Push new entry; stale old entry will be skipped via closed set
+        open.push({ r: nb.r, c: nb.c, g: tentG, f: tentG + heuristic(nb, end) });
+      }
+    }
+  }
+  return { visited, path: [] };
+}
+
+function runDijkstra(start, end) {
+  const dist = { [key(start.r, start.c)]: 0 };
+  const pq = [{ r: start.r, c: start.c, d: 0 }];
+  const cameFrom = {};
+  const visited = [];
+  const seen = new Set();
+
+  while (pq.length) {
+    pq.sort((a, b) => a.d - b.d);
+    const curr = pq.shift();
+    const k = key(curr.r, curr.c);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    if (curr.r === end.r && curr.c === end.c) return { visited, path: reconstruct(cameFrom, curr) };
+    visited.push({ r: curr.r, c: curr.c });
+
+    for (const nb of getNeighbors(curr.r, curr.c)) {
+      const nbk = key(nb.r, nb.c);
+      const nd = (dist[k] || 0) + 1;
+      if (nd < (dist[nbk] ?? Infinity)) {
+        dist[nbk] = nd;
+        cameFrom[nbk] = { r: curr.r, c: curr.c };
+        pq.push({ r: nb.r, c: nb.c, d: nd });
+      }
+    }
+  }
+  return { visited, path: [] };
+}
+
+function runBFS(start, end) {
+  const queue = [{ r: start.r, c: start.c }];
+  const visited = [];
+  const cameFrom = {};
+  const seen = new Set([key(start.r, start.c)]);
+
+  while (queue.length) {
+    const curr = queue.shift();
+    if (curr.r === end.r && curr.c === end.c) return { visited, path: reconstruct(cameFrom, curr) };
+    visited.push(curr);
+
+    for (const nb of getNeighbors(curr.r, curr.c)) {
+      const nbk = key(nb.r, nb.c);
+      if (!seen.has(nbk)) {
+        seen.add(nbk);
+        cameFrom[nbk] = { r: curr.r, c: curr.c };
+        queue.push(nb);
+      }
+    }
+  }
+  return { visited, path: [] };
+}
+
+function runGreedy(start, end) {
+  const open = [{ r: start.r, c: start.c, h: heuristic(start, end) }];
+  const visited = [];
+  const cameFrom = {};
+  const seen = new Set([key(start.r, start.c)]);
+
+  while (open.length) {
+    open.sort((a, b) => a.h - b.h);
+    const curr = open.shift();
+    if (curr.r === end.r && curr.c === end.c) return { visited, path: reconstruct(cameFrom, curr) };
+    visited.push(curr);
+
+    for (const nb of getNeighbors(curr.r, curr.c)) {
+      const nbk = key(nb.r, nb.c);
+      if (!seen.has(nbk)) {
+        seen.add(nbk);
+        cameFrom[nbk] = { r: curr.r, c: curr.c };
+        open.push({ r: nb.r, c: nb.c, h: heuristic(nb, end) });
+      }
+    }
+  }
+  return { visited, path: [] };
+}
+
+function runDFS(start, end) {
+  // Each stack entry carries its own parent so cameFrom is recorded
+  // at pop-time — prevents later pushes overwriting earlier correct parents.
+  const stack = [{ r: start.r, c: start.c, parent: null }];
+  const visited = [];
+  const cameFrom = {};
+  const seen = new Set([key(start.r, start.c)]);
+
+  while (stack.length) {
+    const curr = stack.pop();
+    const k = key(curr.r, curr.c);
+    if (curr.parent) cameFrom[k] = curr.parent;
+
+    if (curr.r === end.r && curr.c === end.c) return { visited, path: reconstruct(cameFrom, curr) };
+    visited.push({ r: curr.r, c: curr.c });
+
+    for (const nb of getNeighbors(curr.r, curr.c)) {
+      const nbk = key(nb.r, nb.c);
+      if (!seen.has(nbk)) {
+        seen.add(nbk);
+        stack.push({ r: nb.r, c: nb.c, parent: { r: curr.r, c: curr.c } });
+      }
+    }
+  }
+  return { visited, path: [] };
+}
+
+function runBidiBFS(start, end) {
+  const qF = [start], qB = [end];
+  // Maps: node_key -> parent node (null for roots)
+  const seenF = new Map([[key(start.r, start.c), null]]);
+  const seenB = new Map([[key(end.r, end.c), null]]);
+  const visited = [];
+
+  function step(queue, seen, otherSeen) {
+    if (!queue.length) return null;
+    const curr = queue.shift();
+    const k = key(curr.r, curr.c);
+    if (otherSeen.has(k)) return curr; // meeting point found
+    visited.push(curr);
+    for (const nb of getNeighbors(curr.r, curr.c)) {
+      const nbk = key(nb.r, nb.c);
+      if (!seen.has(nbk)) {
+        seen.set(nbk, curr); // record parent
+        queue.push(nb);
+      }
+    }
+    return null;
+  }
+
+  while (qF.length || qB.length) {
+    const meetF = step(qF, seenF, seenB);
+    if (meetF) return { visited, path: buildBidiPath(seenF, seenB, meetF) };
+    const meetB = step(qB, seenB, seenF);
+    if (meetB) return { visited, path: buildBidiPath(seenF, seenB, meetB) };
+  }
+  return { visited, path: [] };
+}
+
+function buildBidiPath(seenF, seenB, meet) {
+  const path = [];
+  // Walk backwards from meeting point to start using forward map
+  let curr = meet;
+  while (curr !== null) {
+    path.unshift({ r: curr.r, c: curr.c });
+    curr = seenF.get(key(curr.r, curr.c)) ?? null;
+  }
+  // Walk backwards from meeting point to end using backward map
+  // skip the meeting node itself (already added)
+  let currB = seenB.get(key(meet.r, meet.c)) ?? null;
+  while (currB !== null) {
+    path.push({ r: currB.r, c: currB.c });
+    currB = seenB.get(key(currB.r, currB.c)) ?? null;
+  }
+  return path;
+}
+
+function reconstruct(cameFrom, end) {
+  const path = [];
+  let k = key(end.r, end.c);
+  while (cameFrom[k]) {
+    path.unshift(cameFrom[k]);
+    k = key(cameFrom[k].r, cameFrom[k].c);
+  }
+  path.push(end);
+  return path;
+}
+
+// ─────────────────────────────────────────────
+//  ANIMATION
+// ─────────────────────────────────────────────
+function clearPathCells() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c] === CELL.VISITED || grid[r][c] === CELL.PATH || grid[r][c] === CELL.FRONTIER) {
+        grid[r][c] = CELL.EMPTY;
+      }
+    }
+  }
+}
+
+function setStatus(msg, state='idle') {
+  document.getElementById('status-text').textContent = msg;
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot' + (state !== 'idle' ? ' ' + state : '');
+}
+
+function updateWallStat() {
+  let w = 0;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (grid[r][c]===CELL.WALL) w++;
+  document.getElementById('stat-walls').textContent = w;
+}
+
+async function visualise() {
+  if (!startCell || !endCell) {
+    setStatus('Set a start (S) and end (E) point first.', 'error');
+    return;
+  }
+  if (isRunning) return;
+
+  clearPathCells();
+  drawGrid();
+  isRunning = true;
+  document.getElementById('btn-run').disabled = true;
+  algoStartTime = performance.now();
+
+  const algos = {
+    astar: runAstar, dijkstra: runDijkstra, bfs: runBFS,
+    greedy: runGreedy, dfs: runDFS, bidibfs: runBidiBFS
+  };
+
+  const { visited, path } = algos[currentAlgo](startCell, endCell);
+  const delay = () => 205 - parseInt(document.getElementById('speed').value);
+
+  setStatus(`Exploring… (${visited.length} nodes)`, 'running');
+
+  // Animate visited
+  for (let i = 0; i < visited.length; i++) {
+    const { r, c } = visited[i];
+    if (grid[r][c] === CELL.EMPTY) {
+      grid[r][c] = CELL.VISITED;
+      drawCell(r, c, CELL.VISITED);
+    }
+    await sleep(delay());
+  }
+
+  if (path.length === 0) {
+    setStatus('No path found!', 'error');
+    isRunning = false;
+    document.getElementById('btn-run').disabled = false;
+    return;
+  }
+
+  // Animate path
+  for (const { r, c } of path) {
+    if (grid[r][c] !== CELL.START && grid[r][c] !== CELL.END) {
+      grid[r][c] = CELL.PATH;
+      drawCell(r, c, CELL.PATH);
+    }
+    await sleep(delay() * 1.5);
+  }
+
+  const elapsed = (performance.now() - algoStartTime).toFixed(1);
+  document.getElementById('stat-visited').textContent = visited.length;
+  document.getElementById('stat-path').textContent    = path.length;
+  document.getElementById('stat-time').textContent    = elapsed;
+  setStatus(`Done! Path: ${path.length} steps, Visited: ${visited.length}`, 'done');
+  isRunning = false;
+  document.getElementById('btn-run').disabled = false;
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ─────────────────────────────────────────────
+//  STEP MODE
+// ─────────────────────────────────────────────
+let stepVisited = [], stepPath = [], stepI = 0, stepPhase = 'visit';
+
+function prepareStep() {
+  if (!startCell || !endCell) { setStatus('Set start & end first.', 'error'); return false; }
+  clearPathCells();
+  drawGrid();
+  const algos = {
+    astar: runAstar, dijkstra: runDijkstra, bfs: runBFS,
+    greedy: runGreedy, dfs: runDFS, bidibfs: runBidiBFS
+  };
+  const result = algos[currentAlgo](startCell, endCell);
+  stepVisited = result.visited;
+  stepPath    = result.path;
+  stepI = 0; stepPhase = 'visit';
+  setStatus('Stepping… click "Step →" to advance.', 'running');
+  return true;
+}
+
+let stepReady = false;
+document.getElementById('btn-step').addEventListener('click', () => {
+  if (isRunning) return;
+  if (!stepReady) { stepReady = prepareStep(); return; }
+
+  if (stepPhase === 'visit') {
+    if (stepI < stepVisited.length) {
+      const { r, c } = stepVisited[stepI++];
+      if (grid[r][c] === CELL.EMPTY) { grid[r][c] = CELL.VISITED; drawCell(r, c, CELL.VISITED); }
+    } else {
+      stepPhase = 'path'; stepI = 0;
+    }
+  }
+  if (stepPhase === 'path' && stepI < stepPath.length) {
+    const { r, c } = stepPath[stepI++];
+    if (grid[r][c] !== CELL.START && grid[r][c] !== CELL.END) { grid[r][c] = CELL.PATH; drawCell(r, c, CELL.PATH); }
+    if (stepI === stepPath.length) {
+      setStatus(`Done! Path: ${stepPath.length} steps.`, 'done');
+      stepReady = false;
+    }
+  }
+});
+
+// ─────────────────────────────────────────────
+//  MAZE GENERATION — Recursive Backtracking
+//  Guarantees every cell is reachable (perfect maze)
+// ─────────────────────────────────────────────
+function randomMaze() {
+  clearAll();
+
+  // Fill everything with walls
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      grid[r][c] = CELL.WALL;
+
+  // Recursive backtracker works on odd-indexed cells as "rooms"
+  // so we need at least 3x3. Carve passages by knocking out walls between rooms.
+  const visited = new Set();
+
+  function carve(r, c) {
+    visited.add(key(r, c));
+    grid[r][c] = CELL.EMPTY;
+
+    // Shuffle directions for randomness
+    const dirs = [[-2,0],[2,0],[0,-2],[0,2]].sort(() => Math.random() - 0.5);
+    for (const [dr, dc] of dirs) {
+      const nr = r + dr, nc = c + dc;
+      if (nr > 0 && nr < ROWS-1 && nc > 0 && nc < COLS-1 && !visited.has(key(nr, nc))) {
+        // Knock out the wall between current cell and neighbour
+        grid[r + dr/2][c + dc/2] = CELL.EMPTY;
+        carve(nr, nc);
+      }
+    }
+  }
+
+  // Start carving from (1,1) — always an odd cell
+  carve(1, 1);
+
+  // Place start and end at opposite corners (guaranteed open by carve)
+  grid[1][1] = CELL.START; startCell = { r: 1, c: 1 };
+  const er = ROWS % 2 === 0 ? ROWS - 2 : ROWS - 2;
+  const ec = COLS % 2 === 0 ? COLS - 2 : COLS - 2;
+  grid[er][ec] = CELL.END; endCell = { r: er, c: ec };
+
+  updateWallStat();
+  drawGrid();
+  setStatus('Maze generated — path guaranteed. Click Visualise!', 'idle');
+}
+
+// ─────────────────────────────────────────────
+//  CLEAR
+// ─────────────────────────────────────────────
+function clearAll() {
+  initGrid();
+  clearPathCells();
+  drawGrid();
+  resetStats();
+  setStatus('Grid cleared.', 'idle');
+  stepReady = false;
+}
+function clearPath() {
+  clearPathCells();
+  drawGrid();
+  resetStats();
+  setStatus('Path cleared.', 'idle');
+  stepReady = false;
+}
+function resetStats() {
+  ['stat-visited','stat-path','stat-time'].forEach(id => document.getElementById(id).textContent = '—');
+  document.getElementById('stat-walls').textContent = 0;
+}
+
+// ─────────────────────────────────────────────
+//  UI WIRING
+// ─────────────────────────────────────────────
+document.getElementById('btn-run').addEventListener('click', visualise);
+document.getElementById('btn-clear-path').addEventListener('click', clearPath);
+document.getElementById('btn-clear-all').addEventListener('click', clearAll);
+document.getElementById('btn-random-maze').addEventListener('click', randomMaze);
+
+// Algo buttons
+document.getElementById('algo-list').querySelectorAll('.algo-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.algo-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentAlgo = btn.dataset.algo;
+    stepReady = false;
+  });
+});
+
+// Tool buttons
+document.getElementById('tool-list').querySelectorAll('.tool-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTool = btn.dataset.tool;
+  });
+});
+
+// Speed slider
+const speedSlider = document.getElementById('speed');
+speedSlider.addEventListener('input', () => {
+  document.getElementById('speed-label').textContent = speedSlider.value + 'ms';
+});
+
+// Grid size
+document.getElementById('grid-size').addEventListener('change', e => {
+  const [c, r] = e.target.value.split('x').map(Number);
+  COLS = c; ROWS = r;
+  clearAll();
+  resizeCanvas();
+});
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+initGrid();
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+setStatus('Click to place walls. Set S and E, then Visualise.', 'idle');
+</script>
+</body>
+</html>
